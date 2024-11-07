@@ -8,7 +8,6 @@ admin.initializeApp();
 
 const db = admin.database();
 
-// Function to register a new parking lot
 exports.registerParkingLot = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     const { name, timeZone } = req.body;
@@ -18,10 +17,8 @@ exports.registerParkingLot = functions.https.onRequest((req, res) => {
     }
 
     try {
-      // Generate a unique parking lot ID
       const parkingLotId = uuidv4();
 
-      // Save parking lot data
       await db.ref(`parking-lots/${parkingLotId}`).set({
         name,
         timeZone,
@@ -38,7 +35,6 @@ exports.registerParkingLot = functions.https.onRequest((req, res) => {
   });
 });
 
-// Function to add a car
 exports.addCar = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     const { parkingLotId, numberPlate, imageBase64, timeOfEntry } = req.body;
@@ -58,14 +54,11 @@ exports.addCar = functions.https.onRequest((req, res) => {
 
       const { timeZone } = parkingLotSnapshot.val();
 
-      // Time handling
       const timeOfEntry = new Date().toISOString();
 
-      // Handle image upload
       const imageBuffer = Buffer.from(imageBase64, 'base64');
       const imagePath = `cars/${uniqueCode}.jpg`;
 
-      // Initialize Firebase Storage
       const storage = admin.storage().bucket();
 
       const file = storage.file(imagePath);
@@ -75,7 +68,7 @@ exports.addCar = functions.https.onRequest((req, res) => {
 
       const [imageUrl] = await file.getSignedUrl({
         action: 'read',
-        expires: '03-01-2100', // Adjust as needed
+        expires: '03-01-2100', 
       });
 
       const carData = {
@@ -85,7 +78,6 @@ exports.addCar = functions.https.onRequest((req, res) => {
         uniqueCode,
       };
 
-      // Add to current cars
       await db.ref(`parking-lots/${parkingLotId}/current-cars/${uniqueCode}`).set(carData);
 
       res.status(200).json({
@@ -98,7 +90,6 @@ exports.addCar = functions.https.onRequest((req, res) => {
   });
 });
 
-// Function to remove a car
 exports.removeCar = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     const { parkingLotId, identifier } = req.body;
@@ -119,7 +110,6 @@ exports.removeCar = functions.https.onRequest((req, res) => {
       let carSnapshot = await currentCarsRef.child(identifier).once('value');
 
       if (!carSnapshot.exists()) {
-        // Search by number plate
         const carsSnapshot = await currentCarsRef.orderByChild('carNumberPlate').equalTo(identifier).once('value');
 
         if (carsSnapshot.exists()) {
@@ -133,14 +123,11 @@ exports.removeCar = functions.https.onRequest((req, res) => {
       const carData = carSnapshot.val();
       const uniqueCode = carData.uniqueCode;
 
-      // Time handling
       const timeOfExit = new Date().toISOString();
       carData.timeOfExit = timeOfExit;
 
-      // Move to history
       await parkingLotRef.child(`history/${uniqueCode}`).set(carData);
 
-      // Remove from current cars
       await currentCarsRef.child(uniqueCode).remove();
 
       res.status(200).json({
@@ -155,7 +142,6 @@ exports.removeCar = functions.https.onRequest((req, res) => {
   });
 });
 
-// Function to get all current cars
 exports.getCurrentCars = functions.https.onRequest((req, res) => {
     cors(req, res, async () => {
       const { parkingLotId } = req.query;
